@@ -11,6 +11,7 @@ import CoreLocation
 struct Home: View {
     @StateObject var mapData = MapViewModel()
     @State var locationManager = CLLocationManager()
+    @State var activeRoute: Bool = false
     var body: some View {
         ZStack {
             MapView()
@@ -37,6 +38,7 @@ struct Home: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .onTapGesture {
                                             mapData.selectPlace(place: place)
+                                            activeRoute = true
                                         }
                                     Divider()
                                 }
@@ -49,13 +51,25 @@ struct Home: View {
                 .padding()
                 Spacer()
                 VStack {
-                    Button(action: mapData.focusLocation, label: {
+                    if activeRoute {
+                        Button(action: mapData.makeRoute, label: {
+                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                .font(.title2)
+                                .padding(10)
+                                .background(Color.primary)
+                                .clipShape(Circle())
+                        })
+                    }
+                    Button{
+                        mapData.focusLocation()
+                        activeRoute = false
+                    } label: {
                         Image(systemName: "location.fill")
                             .font(.title2)
                             .padding(10)
                             .background(Color.primary)
                             .clipShape(Circle())
-                    })
+                    }
                     Button(action: mapData.updateMapType, label: {
                         Image(systemName: mapData.mapType == .standard ? "network" : "map")
                             .font(.title2)

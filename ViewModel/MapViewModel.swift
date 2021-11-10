@@ -16,6 +16,7 @@ class MapViewModel: NSObject,ObservableObject,CLLocationManagerDelegate {
     @Published var mapType: MKMapType = .standard
     @Published var searchTxt = ""
     @Published var places: [Place] = []
+    @Published var selectedPlace: [Place] = []
     
     func updateMapType() {
         if mapType == .standard{
@@ -29,8 +30,11 @@ class MapViewModel: NSObject,ObservableObject,CLLocationManagerDelegate {
     
     func focusLocation() {
         guard let _ = region else{return}
-        
+        let overlays = mapView.overlays
+        let annotations = mapView.annotations
         mapView.setRegion(region, animated: true)
+        mapView.removeOverlays(overlays)
+        mapView.removeAnnotations(annotations)
         mapView.setVisibleMapRect(mapView.visibleMapRect, animated: true)
     }
     
@@ -53,6 +57,9 @@ class MapViewModel: NSObject,ObservableObject,CLLocationManagerDelegate {
         
         guard let coordinate = place.place.location?.coordinate else {return}
         
+        selectedPlace.removeAll()
+        selectedPlace.append(place)
+        
         let pointAnnotation = MKPointAnnotation()
         pointAnnotation.coordinate = coordinate
         pointAnnotation.title = place.place.name ?? "No name"
@@ -64,6 +71,25 @@ class MapViewModel: NSObject,ObservableObject,CLLocationManagerDelegate {
         
         mapView.setRegion(coordinateRegion, animated: true)
         mapView.setVisibleMapRect(mapView.visibleMapRect, animated: true)
+    }
+    
+    func makeRoute(){
+        let p1 = MKPlacemark(coordinate: region.center)
+        guard let p2_coordinate = selectedPlace[0].place.location?.coordinate else {return}
+        let p2 = MKPlacemark(coordinate: p2_coordinate)
+        
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: p1)
+        request.destination = MKMapItem(placemark: p2)
+        request.transportType = .any
+        
+        let directions = MKDirections(request: request)
+        directions.calculate { response, error in
+            guard let route = response?.routes.first else {return}
+            self.mapView.addAnnotations([p1, p2])
+            self.mapView.addOverlay(route.polyline)
+            self.mapView.setVisibleMapRect(route.polyline.boundingMapRect, edgePadding: UIEdgeInsets(top: 100, left: 20, bottom: 40, right: 20), animated: true)
+        }
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
